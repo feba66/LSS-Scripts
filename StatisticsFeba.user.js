@@ -5,6 +5,7 @@
 // @author       feba66
 // @match        https://www.leitstellenspiel.de/
 // @grant        none
+// @namespace    https://github.com/feba66/LSS-Scripts/raw/main/StatisticsFeba.user.js
 // ==/UserScript==
 
 (function () {
