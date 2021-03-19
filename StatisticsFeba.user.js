@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         StatisticsFeba
-// @version      1.0.1
+// @version      1.0.2
 // @description  
 // @author       feba66
 // @match        https://www.leitstellenspiel.de/
@@ -91,7 +91,7 @@
 						if (feba_buildings[Gid] != undefined) {
 							feba_missions[id].distance = feba_getMissionDistance(feba_missions[id].latitude, feba_missions[id].longitude, Gid, id, mtid);
                         } else {
-							console.log("Building "+Gid+" is not in buildings-array");
+							console.log("Building " + Gid + " is not in buildings-array. buildings: " + Object.keys(feba_buildings).length);
                         }
                     } else {
 						console.log("Building for mission " + id + " is undefined");
@@ -165,7 +165,9 @@
 			for (var i = 0; i < data.length; i++) {
 				feba_buildings[data[i].id] = data[i];
 			}
-        } catch (e) {
+			console.log("feba_buildings successfully loaded! buildings: "+data.length);
+		} catch (e) {
+			console.log("feba_buildings error:");
 			console.log(e);
         }
     }
@@ -183,6 +185,7 @@
 		fetch("https://www.leitstellenspiel.de/api/buildings").then(function (response) {
 			return response.json();
 		}).then(function (data) {
+			console.log("feba_buildings: got data from api:");
 			console.log(data);
 			var tmp = {};
 			tmp.time = Date.now();
