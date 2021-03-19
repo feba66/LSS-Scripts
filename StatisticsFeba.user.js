@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         StatisticsFeba
-// @version      1.0
+// @version      1.0.1
 // @description  
 // @author       feba66
 // @match        https://www.leitstellenspiel.de/
@@ -18,25 +18,29 @@
 	//======= vars ===============================================================================================================================================================
 
 	var vehicles = {};
-	var missions = {};
-	var buildings = {};
-	var lastRequest = Date.now();
-	var saveTime = 0;
+	var feba_missions = {};
+	var feba_buildings = {};
+	var feba_lastRequest = Date.now();
+	var feba_saveTime = 0;
 
 	//======= overrides ==========================================================================================================================================================
 
-	var missionMarkerAddOrig = missionMarkerAdd;
+	var feba_missionMarkerAddOrig = missionMarkerAdd;
 	missionMarkerAdd = function (e) {
-		missionMarkerAddOrig(e);
-		addToMissions(e);
+		try {
+			feba_addToMissions(e);
+        } catch (ex) {
+			console.log(ex);
+        }
+		feba_missionMarkerAddOrig(e);
 	}
 
 	//======= funcs ==============================================================================================================================================================
 
-	function addToMissions(e) {
+	function feba_addToMissions(e) {
 		if (e.user_id == user_id) {
 
-			if (missions[e.id] != undefined) {
+			if (feba_missions[e.id] != undefined) {
 				//console.log(missions[e.id]);
 			}
 			else {
@@ -50,23 +54,24 @@
 					mtid: e.mtid,
 					distance: null
 				};
-				missions[e.id] = tmp;
-				getGeneratedBy(e.id, e.mtid);
+				feba_missions[e.id] = tmp;
+				tmp = null;
+				feba_getGeneratedBy(e.id, e.mtid);
 			}
 		}
 	}
 
-	function getGeneratedBy(id, mtid) {
+	function feba_getGeneratedBy(id, mtid) {
 		var url = "/einsaetze/" + mtid + "?mission_id=" + id;
 		var timeout = 100, time = Date.now();
 		//console.log("GenBy: " + id + ", " + timeout + ", " + lastRequest + ", " + time);
 
-		if (lastRequest > time || time - lastRequest > 0 && time - lastRequest < 100) {
-			timeout = (lastRequest + 100) - time;
-			lastRequest += 100;
+		if (feba_lastRequest > time || time - feba_lastRequest > 0 && time - feba_lastRequest < 100) {
+			timeout = (feba_lastRequest + 100) - time;
+			feba_lastRequest += 100;
 			//console.log(id+": "+timeout);
         } else {
-			lastRequest = time;
+			feba_lastRequest = time;
         }
 		//console.log("GenBy: " + id + ", " + timeout + ", " + lastRequest + ", " + time);
 		setTimeout(function () {
@@ -81,8 +86,17 @@
 					var Gid = parseInt(data.substr(index, index2 - index));
 
 					
-					missions[id]["generatedBy"] = Gid;
-					missions[id].distance = getMissionDistance(missions[id].latitude, missions[id].longitude, Gid, id, mtid);
+					feba_missions[id]["generatedBy"] = Gid;
+					if (Gid != undefined) {
+						if (feba_buildings[Gid] != undefined) {
+							feba_missions[id].distance = feba_getMissionDistance(feba_missions[id].latitude, feba_missions[id].longitude, Gid, id, mtid);
+                        } else {
+							console.log("Building "+Gid+" is not in buildings-array");
+                        }
+                    } else {
+						console.log("Building for mission " + id + " is undefined");
+                    }
+					
 				})
 				.catch(function (error) {
 					console.log(error);
@@ -91,14 +105,14 @@
 		
 
 	}
-	function getMissionDistance(misLat, misLon, buildingID, mid, mtid) {
-		if (missions[mid].distance == undefined) {
+	function feba_getMissionDistance(misLat, misLon, buildingID, mid, mtid) {
+		if (feba_missions[mid].distance == undefined) {
 			var bLat = 0;
 			var bLon = 0;
 
 			try {
-				bLat = buildings[buildingID].latitude;
-				bLon = buildings[buildingID].longitude;
+				bLat = feba_buildings[buildingID].latitude;
+				bLon = feba_buildings[buildingID].longitude;
             } catch (e) {
 				console.log(e);
             }
@@ -122,17 +136,17 @@
 		return 421337;
 	}
 
-	function saveMissionsToStorage() {
-		saveTime = Date.now();
-		localStorage.setItem(MISSIONSTRING, JSON.stringify({"time":saveTime, "data": missions }));
+	function feba_saveMissionsToStorage() {
+		feba_saveTime = Date.now();
+		localStorage.setItem(MISSIONSTRING, JSON.stringify({"time":feba_saveTime, "data": feba_missions }));
 		console.log("Saved missions to Storage");
 	}
-	function loadMissionsFromStorage() {
+	function feba_loadMissionsFromStorage() {
 		var strg = localStorage.getItem(MISSIONSTRING);
 		var json = JSON.parse(strg);
 		if (json) {
 			if (json.data) {
-				missions = json.data;
+				feba_missions = json.data;
 				console.log("Loaded MissionLog");
 				console.log(json.data);
             }
@@ -146,26 +160,26 @@
 
 
 	//============================================================================================================================================================================
-	function handleBuild(data) {
+	function feba_handleBuild(data) {
 		try {
 			for (var i = 0; i < data.length; i++) {
-				buildings[data[i].id] = data[i];
+				feba_buildings[data[i].id] = data[i];
 			}
         } catch (e) {
 			console.log(e);
         }
     }
-	var buildingsAPI;
-	var overtime = false;
-	if ((buildingsAPI = localStorage.getItem(BUILDINGSTRING)) != null) {
-		var temp = JSON.parse(buildingsAPI);
+	var feba_buildingsAPI;
+	var feba_overtime = false;
+	if ((feba_buildingsAPI = localStorage.getItem(BUILDINGSTRING)) != null) {
+		var temp = JSON.parse(feba_buildingsAPI);
 		if (Date.now() - temp.time > 60000) {
-			overtime = true;
+			feba_overtime = true;
 		} else {
-			handleBuild(temp.data);
+			feba_handleBuild(temp.data);
 		}
 	} 
-	if (overtime) {
+	if (feba_overtime) {
 		fetch("https://www.leitstellenspiel.de/api/buildings").then(function (response) {
 			return response.json();
 		}).then(function (data) {
@@ -173,7 +187,7 @@
 			var tmp = {};
 			tmp.time = Date.now();
 			tmp.data = data;
-			handleBuild(data);
+			feba_handleBuild(data);
 			localStorage.setItem(BUILDINGSTRING, JSON.stringify(tmp));
 		}).catch(function (error) {
 			console.log("error: " + error);
@@ -181,25 +195,25 @@
 	}
 	//============================================================================================================================================================================
 
-	var btn = $('<li><a href="#" id="feba66_statistics"><span style="border:1px solid lightgray;padding:2px;border-radius:8px">MissionLog</span></a></li>');
-	$('#navbar-main-collapse > ul').append(btn);
-	var btn2 = $('<li><a href="#" id="feba66_buildings"><span style="border:1px solid lightgray;padding:2px;border-radius:8px">Buildings</span></a></li>');
-	$('#navbar-main-collapse > ul').append(btn2);
+	var feba_btn = $('<li><a href="#" id="feba66_statistics"><span style="border:1px solid lightgray;padding:2px;border-radius:8px">MissionLog</span></a></li>');
+	$('#navbar-main-collapse > ul').append(feba_btn);
+	var feba_btn2 = $('<li><a href="#" id="feba66_buildings"><span style="border:1px solid lightgray;padding:2px;border-radius:8px">Buildings</span></a></li>');
+	$('#navbar-main-collapse > ul').append(feba_btn2);
 
 	$("#feba66_statistics").click(function () {
-		console.log(missions);
+		console.log(feba_missions);
 		var string = "";
 		var first = true;
-		for (var m in missions) {
+		for (var m in feba_missions) {
 			if (first) {
-				for (var a in missions[m]) {
+				for (var a in feba_missions[m]) {
 					string += a + ";";
 				}
 				string += "\n";
 				first = false;
 			}
-			for (var a in missions[m]) {
-				string += missions[m][a] + ";";
+			for (var a in feba_missions[m]) {
+				string += feba_missions[m][a] + ";";
 			}
 			string += "\n";
 		}
@@ -210,10 +224,10 @@
 		console.log(string);
 	});
 	$("#feba66_buildings").click(function () {
-		console.log(buildings);
+		console.log(feba_buildings);
 		var string = "";
 		var first = true;
-		for (var m in buildings) {
+		for (var m in feba_buildings) {
 			if (first) {
 				string += "building_type" + ";";
 				string += "caption" + ";";
@@ -224,11 +238,11 @@
 				first = false;
 			}
 
-			string += buildings[m]["building_type"] + ";";
-			string += buildings[m]["caption"] + ";";
-			string += buildings[m]["id"] + ";";
-			string += buildings[m]["latitude"] + ";";
-			string += buildings[m]["longitude"] + ";";
+			string += feba_buildings[m]["building_type"] + ";";
+			string += feba_buildings[m]["caption"] + ";";
+			string += feba_buildings[m]["id"] + ";";
+			string += feba_buildings[m]["latitude"] + ";";
+			string += feba_buildings[m]["longitude"] + ";";
 			string += "\n";
 		}
 		while (string.indexOf(".") > -1) {
@@ -237,9 +251,9 @@
 		}
 		console.log(string);
 	});
-	loadMissionsFromStorage();
+	feba_loadMissionsFromStorage();
 
 	setInterval(function () {
-		saveMissionsToStorage();
+		feba_saveMissionsToStorage();
 	}, 60000);
 })();
